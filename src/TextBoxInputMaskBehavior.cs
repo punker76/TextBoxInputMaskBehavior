@@ -14,43 +14,43 @@ namespace TextBoxInputMaskBehavior_Sample
     /// </summary>
     public class TextBoxInputMaskBehavior : Behavior<TextBox>
     {
-        private PropertyChangeNotifier _notifier;
+        private PropertyChangeNotifier textPropertyNotifier;
 
         #region DependencyProperties
 
         public static readonly DependencyProperty InputMaskProperty =
-          DependencyProperty.Register("InputMask", typeof(string), typeof(TextBoxInputMaskBehavior), null);
+            DependencyProperty.Register("InputMask", typeof(string), typeof(TextBoxInputMaskBehavior), null);
 
         public string InputMask
         {
-            get { return (string)GetValue(InputMaskProperty); }
+            get { return (string) GetValue(InputMaskProperty); }
             set { SetValue(InputMaskProperty, value); }
         }
 
         public static readonly DependencyProperty PromptCharProperty =
-           DependencyProperty.Register("PromptChar", typeof(char), typeof(TextBoxInputMaskBehavior), new PropertyMetadata('_'));
+            DependencyProperty.Register("PromptChar", typeof(char), typeof(TextBoxInputMaskBehavior), new PropertyMetadata('_'));
 
         public char PromptChar
         {
-            get { return (char)GetValue(PromptCharProperty); }
+            get { return (char) GetValue(PromptCharProperty); }
             set { SetValue(PromptCharProperty, value); }
         }
 
         public static readonly DependencyProperty ResetOnSpaceProperty =
-           DependencyProperty.Register("ResetOnSpace", typeof(bool), typeof(TextBoxInputMaskBehavior), new PropertyMetadata(false));
+            DependencyProperty.Register("ResetOnSpace", typeof(bool), typeof(TextBoxInputMaskBehavior), new PropertyMetadata(false));
 
         public bool ResetOnSpace
         {
-            get { return (bool)GetValue(ResetOnSpaceProperty); }
+            get { return (bool) GetValue(ResetOnSpaceProperty); }
             set { SetValue(ResetOnSpaceProperty, value); }
         }
 
         public static readonly DependencyProperty IgnorSpaceProperty =
-          DependencyProperty.Register("IgnorSpace", typeof(bool), typeof(TextBoxInputMaskBehavior), new PropertyMetadata(true));
+            DependencyProperty.Register("IgnorSpace", typeof(bool), typeof(TextBoxInputMaskBehavior), new PropertyMetadata(true));
 
         public bool IgnorSpace
         {
-            get { return (bool)GetValue(IgnorSpaceProperty); }
+            get { return (bool) GetValue(IgnorSpaceProperty); }
             set { SetValue(IgnorSpaceProperty, value); }
         }
 
@@ -105,7 +105,7 @@ namespace TextBoxInputMaskBehavior_Sample
         \  Escape: treat the next character in the mask as literal text rather than a mask symbol  
 
         */
-        void AssociatedObjectLoaded(object sender, System.Windows.RoutedEventArgs e)
+        private void AssociatedObjectLoaded(object sender, System.Windows.RoutedEventArgs e)
         {
             this.Provider = new MaskedTextProvider(InputMask, CultureInfo.CurrentCulture);
             this.Provider.PromptChar = this.PromptChar;
@@ -116,24 +116,22 @@ namespace TextBoxInputMaskBehavior_Sample
 
             this.AssociatedObject.Text = GetProviderText();
 
-
-            //seems the only way that the text is formatted correct, when source is updated
-            //AddValueChanged for TextProperty in a weak manner
-            this._notifier = new PropertyChangeNotifier(this.AssociatedObject, TextBox.TextProperty);
-            this._notifier.ValueChanged += new EventHandler(this.UpdateText);
+            // seems the only way that the text is formatted correct, when source is updated
+            // AddValueChanged for TextProperty in a weak manner
+            this.textPropertyNotifier = new PropertyChangeNotifier(this.AssociatedObject, TextBox.TextProperty);
+            this.textPropertyNotifier.ValueChanged += this.UpdateText;
         }
-        void AssociatedObjectPreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
+
+        private void AssociatedObjectPreviewTextInput(object sender, System.Windows.Input.TextCompositionEventArgs e)
         {
-#if DEBUG
             Debug("PreviewTextInput");
-#endif
+
             e.Handled = true;
             var text = HandleCharacterCasing(e.Text);
 
             this.TreatSelectedText();
 
             var position = this.GetNextCharacterPosition(AssociatedObject.CaretIndex);
-
             if (Keyboard.IsKeyToggled(Key.Insert))
             {
                 if (!this.Provider.Replace(text, position))
@@ -155,13 +153,12 @@ namespace TextBoxInputMaskBehavior_Sample
             this.RefreshText(nextposition);
         }
 
-        void AssociatedObjectPreviewKeyDown(object sender, KeyEventArgs e)
+        private void AssociatedObjectPreviewKeyDown(object sender, KeyEventArgs e)
         {
             //WICHTIG: TreatSelectedText oder sonst was nur in den IF's behandeln, weil KeyDown immer als erstes kommt
-#if DEBUG
             Debug("PreviewKeyDown");
-#endif
-            if (e.Key == Key.Space)//handle the space
+
+            if (e.Key == Key.Space) //handle the space
             {
                 e.Handled = true;
 
@@ -172,8 +169,8 @@ namespace TextBoxInputMaskBehavior_Sample
                 }
 
                 this.TreatSelectedText();
-                var position = this.GetNextCharacterPosition(AssociatedObject.CaretIndex);
 
+                var position = this.GetNextCharacterPosition(AssociatedObject.CaretIndex);
                 if (!this.Provider.InsertAt(" ", position))
                 {
                     System.Media.SystemSounds.Beep.Play();
@@ -183,7 +180,7 @@ namespace TextBoxInputMaskBehavior_Sample
                 this.RefreshText(AssociatedObject.CaretIndex + 1);
             }
 
-            if (e.Key == Key.Back)//handle the back space
+            if (e.Key == Key.Back) //handle the back space
             {
                 e.Handled = true;
 
@@ -196,10 +193,11 @@ namespace TextBoxInputMaskBehavior_Sample
 
                 //wenn man ganz vorne steht gibs nix zu löschen, ausser wenn was selektiert war, s.h.oben
                 if (AssociatedObject.CaretIndex == 0)
+                {
                     return;
+                }
 
                 var denDavor = AssociatedObject.CaretIndex - 1;
-
                 if (this.Provider.IsEditPosition(denDavor))
                 {
                     if (!this.Provider.RemoveAt(denDavor))
@@ -212,7 +210,7 @@ namespace TextBoxInputMaskBehavior_Sample
                 this.RefreshText(AssociatedObject.CaretIndex - 1);
             }
 
-            if (e.Key == Key.Delete)//handle the delete key
+            if (e.Key == Key.Delete) //handle the delete key
             {
                 e.Handled = true;
 
@@ -223,9 +221,7 @@ namespace TextBoxInputMaskBehavior_Sample
                     return;
                 }
 
-
                 var position = AssociatedObject.CaretIndex;
-
                 if (this.Provider.IsEditPosition(position))
                 {
                     if (!this.Provider.RemoveAt(position))
@@ -252,12 +248,11 @@ namespace TextBoxInputMaskBehavior_Sample
             //nur strg+c zulassen kein drag&drop
             if (e.DataObject.GetDataPresent(typeof(string)) && !e.IsDragDrop)
             {
-                var pastedText = HandleCharacterCasing((string)e.DataObject.GetData(typeof(string)));
+                var pastedText = HandleCharacterCasing((string) e.DataObject.GetData(typeof(string)));
 
                 this.TreatSelectedText();
 
                 var position = GetNextCharacterPosition(AssociatedObject.CaretIndex);
-
                 if (!this.Provider.InsertAt(pastedText, position))
                 {
                     System.Media.SystemSounds.Beep.Play();
@@ -266,7 +261,6 @@ namespace TextBoxInputMaskBehavior_Sample
                 {
                     this.RefreshText(position);
                     this.AssociatedObject.Focus();
-
                 }
             }
 
@@ -275,12 +269,13 @@ namespace TextBoxInputMaskBehavior_Sample
 
         private void UpdateText(object sender, EventArgs eventArgs)
         {
-#if DEBUG
             Debug("UpdateText");
-#endif
+
             //check Provider.Text + TextBox.Text
             if (HandleCharacterCasing(this.Provider.ToDisplayString()).Equals(HandleCharacterCasing(AssociatedObject.Text)))
+            {
                 return;
+            }
 
             //use provider to format
             var success = this.Provider.Set(HandleCharacterCasing(AssociatedObject.Text));
@@ -297,11 +292,9 @@ namespace TextBoxInputMaskBehavior_Sample
                     return text.ToLower();
                 case CharacterCasing.Upper:
                     return text.ToUpper();
-
                 default:
                     return text;
             }
-
         }
 
         /// <;summary>
@@ -320,9 +313,7 @@ namespace TextBoxInputMaskBehavior_Sample
         private void RefreshText(int position)
         {
             SetText(GetProviderText());
-#if DEBUG
             Debug("SetText");
-#endif
             AssociatedObject.CaretIndex = position;
         }
 
@@ -334,13 +325,16 @@ namespace TextBoxInputMaskBehavior_Sample
         private int GetNextCharacterPosition(int caretIndex)
         {
             var start = caretIndex + GetAnzahlIncludeLiterals(caretIndex);
-
             var position = this.Provider.FindEditPositionFrom(start, true);
 
             if (position == -1)
+            {
                 return start;
+            }
             else
+            {
                 return position;
+            }
         }
 
         private string GetProviderText()
@@ -348,14 +342,14 @@ namespace TextBoxInputMaskBehavior_Sample
             //wenn noch gar kein Zeichen eingeben wurde, soll auch nix drin stehen
             //könnte man noch anpassen wenn man masken in der Oberfläche vllt doch haben will bei nem leeren feld
             return this.Provider.AssignedEditPositionCount > 0
-                       ? HandleCharacterCasing(this.Provider.ToDisplayString())
-                       : HandleCharacterCasing(this.Provider.ToString(true, true));
+                ? HandleCharacterCasing(this.Provider.ToDisplayString())
+                : HandleCharacterCasing(this.Provider.ToString(true, true));
         }
 
         private int GetAnzahlIncludeLiterals(int index)
         {
             //todo??
-            return 0;//anzLiterals;
+            return 0; //anzLiterals;
         }
 
         private void Debug(string name)
